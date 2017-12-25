@@ -1,13 +1,31 @@
 var Profile = require("./profile.js");
+const rendered = require('./rendered.js');
+const queryString = require('querystring');
+
+const contentHeader = {'Content-Type': 'text/html'};
+
+
+
 function homeRoute(request, response) {
 	if (request.url === '/') {
-		response.writeHead(200, {
-	        'Content-Type': 'text/plain',
-	        'Access-Control-Allow-Origin' : '*'
-	    });
-	    response.write("Header\n");
-	    response.write("Content\n");
-	    response.end("Footer\n");
+		if (request.method.toLowerCase() === "get") {
+			response.writeHead(200, {
+		        contentHeader,
+		        'Access-Control-Allow-Origin' : '*'
+		    });
+	    
+	    	rendered.view("header", {}, response);
+		    rendered.view("search", {}, response);
+		    rendered.view("footer", {}, response);
+		    response.end();
+	    } else {
+	    	request.on("data", function(postBody) {
+	    		console.log(postBody.toString());
+	    		const query = queryString.parse(postBody.toString());
+	    		response.writeHead(303, {"location": "/" + query.username});
+	    		response.end();
+	    	});
+	    }
 	}
 }
 
@@ -15,10 +33,10 @@ function userRoute(request, response) {
 	const userName = request.url.replace("/", "");
 	if (userName.length > 0) {
 		response.writeHead(200, {
-	        'Content-Type': 'text/plain',
+	        contentHeader,
 	        'Access-Control-Allow-Origin' : '*'
 	    });
-	    response.write("Header\n");
+	    rendered.view("header", {}, response);
 	    
 	    var studentProfile = new Profile(userName);
 	    studentProfile.on("end", function(profileJson) {
@@ -30,12 +48,16 @@ function userRoute(request, response) {
 	    		javascriptPoints: profileJson.points.JavaScript
 	    	}
 
-	    	response.write(values.userName + " has " + values.badges + " badges \n");
-	    	response.end("Footer\n");
+	    	// response.write(values.userName + " has " + values.badges + " badges \n");
+	    	rendered.view("profile", values, response);
+	    	rendered.view("footer", {}, response);
+	    	response.end();
 	    });
 	    studentProfile.on("error", function(error) {
-	    	response.write(error.message + "\n");
-	    	response.end("Footer\n");
+	    	rendered.view("error", {errorMessage: error.message}, response);
+	    	rendered.view("search", {}, response);
+	    	rendered.view("footer", {}, response);
+	    	response.end();
 	    });
 	    
 	}
